@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Intercom Chat Auditor</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header>
+      <h3>Intercom Chat Auditor</h3>
+      <a href="#" id="settingsLink" title="Configure Auditor">⚙️ Settings</a>
+    </header>
+
+    <div class="content">
+      <div id="noKeyWarning" class="warning" style="display: none;">
+        Please configure your Gemini API Key in <a href="#" id="warningSettingsLink">Settings</a> first.
+      </div>
+
+      <div class="actions">
+        <button id="auditBtn">Run Quality Audit</button>
+      </div>
+
+      <div id="status" class="status-msg">Ready</div>
+
+      <!-- Quick Metrics Dashboard -->
+      <div id="metricsPanel" class="metrics-dashboard" style="display: none;">
+        <div class="metric-row">
+          <span class="metric-label">First Response SLA:</span>
+          <span id="slaBadge" class="badge">--</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">FRT Duration:</span>
+          <span id="frtVal" class="metric-value">--</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Average Response (ART):</span>
+          <span id="artVal" class="metric-value">--</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Dead Air (> 3m):</span>
+          <span id="deadAirBadge" class="badge">--</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Total Handling Time (AHT):</span>
+          <span id="ahtVal" class="metric-value">--</span>
+        </div>
+      </div>
+
+      <!-- Audit Text Report -->
+      <div class="result-area">
+        <textarea id="resultText" readonly placeholder="Run an audit to view compliance scorecard and areas for improvement..."></textarea>
+        <button id="copyBtn" disabled>Copy Audit Report</button>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
