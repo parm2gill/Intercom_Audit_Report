@@ -99,19 +99,33 @@ document.addEventListener('DOMContentLoaded', () => {
               slaBadge.className = 'badge fail';
             }
 
-            frtVal.textContent = formatTime(metrics.responseTimeSeconds);
-            artVal.textContent = formatTime(metrics.avgResponseTimeSeconds);
+            if (metrics.isAiEvaluated) {
+              frtVal.textContent = metrics.frtString;
+              artVal.textContent = metrics.artString;
 
-            // Dead Air
-            if (metrics.deadAirDetected) {
-              deadAirBadge.textContent = 'Gap Detected';
-              deadAirBadge.className = 'badge fail';
+              deadAirBadge.textContent = metrics.deadAirString;
+              if (metrics.deadAirDetected) {
+                deadAirBadge.className = 'badge fail';
+              } else {
+                deadAirBadge.className = 'badge pass';
+              }
+
+              ahtVal.textContent = metrics.ahtString;
             } else {
-              deadAirBadge.textContent = 'None';
-              deadAirBadge.className = 'badge pass';
-            }
+              frtVal.textContent = formatTime(metrics.responseTimeSeconds);
+              artVal.textContent = formatTime(metrics.avgResponseTimeSeconds);
 
-            ahtVal.textContent = formatTime(metrics.handlingTimeSeconds);
+              // Dead Air
+              if (metrics.deadAirDetected) {
+                deadAirBadge.textContent = 'Gap Detected';
+                deadAirBadge.className = 'badge fail';
+              } else {
+                deadAirBadge.textContent = 'None';
+                deadAirBadge.className = 'badge pass';
+              }
+
+              ahtVal.textContent = formatTime(metrics.handlingTimeSeconds);
+            }
           } else {
             // Incomplete metrics
             slaBadge.textContent = 'N/A';

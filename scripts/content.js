@@ -107,11 +107,12 @@ async function scrollChatToTop(container) {
 function parseChatMessages(container) {
   const messages = [];
   
-  // 1. Broadly query any potential message elements
+  // 1. Query potential message elements (avoiding broad outer layout wrappers)
   let messageBlocks = Array.from(container.querySelectorAll(
-    '[data-testid="conversation-part"], .conversation-part, .im-message-body, .conversation-part__container, ' +
-    '[data-testid*="message"], [class*="conversation-part"], [class*="message-part"], [class*="message-body"], ' +
-    'div[class*="message"], div[class*="part"], div[class*="bubble"], div[class*="body"]'
+    '[data-testid="conversation-part"], [data-testid="admin-message-part"], [data-testid="customer-message-part"], ' +
+    '.conversation-part, .conversation-part__container, .conversation-part__body, .im-message-body, ' +
+    '[class*="conversation-part"], [class*="message-part"], [class*="message-body"], ' +
+    'div[class*="bubble"], div[class*="message-text"], span[class*="message-text"]'
   ));
   
   // 2. Filter down to elements that actually contain text

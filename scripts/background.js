@@ -155,7 +155,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // 4. Build prompt for Gemini to audit protocol compliance
         const systemPrompt = `You are an elite Quality-Control (QA) Auditor checking support chats between exam proctors/candidates and support agents.
 
-Your job is to analyze the provided chronological message log, sidebar metadata, and page text to grade the support agent against the following standard protocol:
+Your job is to analyze the provided chronological message log, sidebar metadata, and page text to grade the support agent against the standard protocols.
+
+TIMELINE ANALYTICS METRICS:
+First, perform precise natural language timeline analysis. Semantically identify the customer/proctor (e.g. Ahmed Mushahid) and the human support agent (e.g. Manasa) from the chat text.
+Calculate:
+1. slaMet: true if the human agent's first reply was within 60 seconds (or the configured SLA limit) of the customer's completed issue description, false otherwise.
+2. frtDuration: The exact duration of the first response (e.g., "45s", "1m 15s").
+3. avgResponseTime: The average response delay of the agent to subsequent customer messages (e.g., "1m 12s").
+4. deadAir: "Gap Detected (>3m)" if the agent kept the customer waiting in silence for > 3 minutes at any point; otherwise "None".
+5. handlingTime: The total elapsed duration of the chat (e.g., "5m 24s").
+
+You MUST output these calculated metrics in a valid JSON block enclosed between METRICS_START and METRICS_END.
+
+Example:
+METRICS_START
+{
+  "slaMet": true,
+  "frtDuration": "45s",
+  "avgResponseTime": "1m 12s",
+  "deadAir": "None",
+  "handlingTime": "5m 12s"
+}
+METRICS_END
 
 SOP COMPLIANCE PROTOCOLS:
 1. PROFESSIONAL GREETING: Did the agent greet the proctor/candidate politely?
@@ -184,7 +206,7 @@ Areas for Improvement:
 - [Item 2 or "None"]
 `;
 
-        const userContent = `Here is the conversation and metadata:
+        const userContent = `Here is the conversation and metadata (Note: Target SLA is ${slaLimitSeconds} seconds):
 
 --- MESSAGES HISTORY (CHRONOLOGICAL) ---
 ${messages.map(m => `[${m.senderType.toUpperCase()}${m.isBot ? ' - BOT' : ''}] (${m.timestamp}): ${m.text}`).join('\n\n')}
@@ -221,16 +243,45 @@ ${bodyText}
         }
 
         const data = await response.json();
-        const auditText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        let auditText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!auditText) {
           throw new Error('Empty response from Gemini API.');
         }
 
+        let auditReport = auditText.trim();
+        let finalMetrics = metrics;
+
+        // Extract metrics block from Gemini response
+        const metricsRegex = /METRICS_START\s*([\s\S]*?)\s*METRICS_END/;
+        const match = auditReport.match(metricsRegex);
+        if (match) {
+          try {
+            const aiMetrics = JSON.parse(match[1].trim());
+            finalMetrics = {
+              status: 'Success',
+              slaMet: aiMetrics.slaMet,
+              responseTimeSeconds: null,
+              avgResponseTimeSeconds: null,
+              deadAirDetected: aiMetrics.deadAir !== 'None',
+              handlingTimeSeconds: null,
+              frtString: aiMetrics.frtDuration,
+              artString: aiMetrics.avgResponseTime,
+              deadAirString: aiMetrics.deadAir,
+              ahtString: aiMetrics.handlingTime,
+              isAiEvaluated: true
+            };
+            // Clean up the JSON block from the visual report text
+            auditReport = auditReport.replace(metricsRegex, '').trim();
+          } catch (e) {
+            console.error('Failed to parse AI metrics', e);
+          }
+        }
+
         sendResponse({
           success: true,
-          metrics: metrics,
-          auditReport: auditText.trim()
+          metrics: finalMetrics,
+          auditReport: auditReport
         });
 
       } catch (err) {
