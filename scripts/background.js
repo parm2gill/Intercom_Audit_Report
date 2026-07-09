@@ -186,7 +186,9 @@ METRICS_END
 
 SOP COMPLIANCE PROTOCOLS:
 1. PROFESSIONAL GREETING: Did the agent greet the proctor/candidate politely?
-2. SKU/ID VERIFICATION: Did the agent acknowledge or verify the proctor's Session ID (UUID) and SKU? (Look at the sidebar or the first message from the proctor).
+2. SKU/ID VERIFICATION: Did the agent correctly handle SKU/ID verification?
+   - NOTE: If the proctor has ALREADY provided the Session ID (UUID) and SKU in their initial message or pre-chat form (which they usually do, e.g. "7fd8943d-... | EX280V418K"), the support agent is NOT required to ask for or cross-verify them. If the details were provided by the proctor, mark this as "Yes" (SOP satisfied).
+   - The agent should only be marked "No" if the Session ID or SKU was MISSING from the proctor's initial inputs and the agent failed to ask the proctor for them.
 3. PROTOCOL TROUBLESHOOTING: Did the agent follow standard procedures (e.g. state they are checking the backend server status, referencing a standard cert-wiki protocol, or syncing the UI)?
 4. SAFE CLOSURE: Did the agent get explicit consent/confirmation from the proctor that everything is okay before saying goodbye and closing the chat?
 
