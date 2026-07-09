@@ -107,69 +107,107 @@ async function scrollChatToTop(container) {
 function parseChatMessages(container) {
   const messages = [];
   
-  // Look for message parts inside Intercom chat container
-  // Intercom typically wraps message elements inside specific classes/roles.
-  const messageBlocks = Array.from(container.querySelectorAll('[data-testid="conversation-part"], .conversation-part, .im-message-body, .conversation-part__container'));
+  // 1. Broadly query any potential message elements
+  let messageBlocks = Array.from(container.querySelectorAll(
+    '[data-testid="conversation-part"], .conversation-part, .im-message-body, .conversation-part__container, ' +
+    '[data-testid*="message"], [class*="conversation-part"], [class*="message-part"], [class*="message-body"], ' +
+    'div[class*="message"], div[class*="part"], div[class*="bubble"], div[class*="body"]'
+  ));
+  
+  // 2. Filter down to elements that actually contain text
+  messageBlocks = messageBlocks.filter(el => {
+    const txt = el.innerText ? el.innerText.trim() : '';
+    return txt.length > 0 && txt.length < 2000; // exclude full wrapper containers
+  });
+
+  // 3. Filter out parent elements to keep only the leaf-most message nodes (prevents duplicate bubbles)
+  messageBlocks = messageBlocks.filter(el => {
+    return !messageBlocks.some(other => other !== el && el.contains(other));
+  });
+
+  // 4. Fallback if empty: use direct children containing text
+  if (messageBlocks.length === 0) {
+    messageBlocks = Array.from(container.children).filter(el => {
+      const txt = el.innerText ? el.innerText.trim() : '';
+      return txt.length > 0;
+    });
+  }
   
   messageBlocks.forEach((block, index) => {
-    // 1. Determine Sender Type
+    // Determine Text Content
+    let text = block.innerText ? block.innerText.trim() : '';
+    if (!text || text.includes('Exclude from CSAT')) return;
+
+    // Determine Sender Type & Timestamp by traversing up to find metadata/context
     let senderType = 'unknown';
-    const classList = block.className || '';
+    let timestamp = '';
     
-    // Intercom differentiates customer vs agent visually and in data attributes
-    if (block.querySelector('.conversation-part__metadata--customer') || classList.includes('customer') || block.closest('.conversation-part--customer')) {
-      senderType = 'customer';
-    } else if (block.querySelector('.conversation-part__metadata--admin') || classList.includes('admin') || classList.includes('agent') || block.closest('.conversation-part--admin')) {
-      senderType = 'agent';
-    } else {
-      // Fallback text check
+    let current = block;
+    while (current && current !== container) {
+      const classList = current.className || '';
+      const dataTestId = current.getAttribute('data-testid') || '';
+      
+      if (typeof classList === 'string') {
+        if (
+          classList.includes('customer') || 
+          dataTestId.includes('customer') || 
+          current.querySelector('.conversation-part__metadata--customer')
+        ) {
+          senderType = 'customer';
+        } else if (
+          classList.includes('admin') || 
+          classList.includes('agent') || 
+          dataTestId.includes('admin') || 
+          dataTestId.includes('agent') || 
+          current.querySelector('.conversation-part__metadata--admin')
+        ) {
+          senderType = 'agent';
+        }
+      }
+      
+      const timeElement = current.querySelector('time, .conversation-part__time, .conversation-part__metadata');
+      if (timeElement && !timestamp) {
+        timestamp = timeElement.getAttribute('datetime') || timeElement.getAttribute('title') || '';
+      }
+      
+      current = current.parentElement;
+    }
+
+    // Fallbacks for sender detection
+    if (senderType === 'unknown') {
       const metadataText = block.querySelector('.conversation-part__metadata')?.innerText || '';
       if (metadataText.toLowerCase().includes('you') || metadataText.toLowerCase().includes('support')) {
         senderType = 'agent';
       } else if (metadataText.length > 0) {
         senderType = 'customer';
+      } else {
+        // Default to customer (safest fallback for SLA calculation)
+        senderType = 'customer';
       }
     }
-    
-    // 2. Extract Message Text
-    const textElement = block.querySelector('.conversation-part__body, .im-message-body__text') || block;
-    let text = textElement.innerText ? textElement.innerText.trim() : '';
-    
-    // Ignore empty/system notes
-    if (!text || text.includes('Exclude from CSAT')) return;
 
-    // 3. Extract Precise Timestamps
-    const timeElement = block.querySelector('time, .conversation-part__time, .conversation-part__metadata');
-    let timestamp = '';
-    
-    if (timeElement) {
-      timestamp = timeElement.getAttribute('datetime') || timeElement.getAttribute('title') || '';
-    }
-    
+    // Default timestamp fallback
     if (!timestamp) {
-      // Look for any child or attribute with a date/time title
       const titledEl = block.querySelector('[title]');
       if (titledEl) {
         timestamp = titledEl.getAttribute('title');
       }
     }
 
-    // Default to approximate sequential date if missing
     if (!timestamp) {
       timestamp = new Date(Date.now() - (messageBlocks.length - index) * 60000).toISOString();
     } else {
-      // Parse to standard ISO string if readable
       try {
         const parsedDate = new Date(timestamp);
         if (!isNaN(parsedDate.getTime())) {
           timestamp = parsedDate.toISOString();
         }
       } catch (e) {
-        // keep as raw text
+        // keep raw
       }
     }
 
-    // 4. Detect Automated Bot or System messages
+    // Detect Automated Bot or System messages
     let isBot = false;
     const textLower = text.toLowerCase();
     if (
