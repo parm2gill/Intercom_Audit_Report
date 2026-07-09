@@ -157,10 +157,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 Your job is to analyze the provided chronological message log, sidebar metadata, and page text to grade the support agent against the standard protocols.
 
-TIMELINE ANALYTICS METRICS:
-First, perform precise natural language timeline analysis. Semantically identify the customer/proctor (e.g. Ahmed Mushahid) and the human support agent (e.g. Manasa) from the chat text.
+TIMELINE ANALYTICS METRICS & HIGH-INTELLIGENCE ROLE RECOVERY:
+- Note that the message history prefixes ([CUSTOMER], [AGENT]) might sometimes be incorrect due to DOM scraping limitations.
+- You MUST perform semantic role recovery on the raw text:
+  - Semantically identify the customer/proctor (the one requesting time deductions, asking if they can close, or presenting UUIDs/SKUs. They often have initials like 'M' or 'A').
+  - Semantically identify the human support agent (the one replying with "Sure", "Let me check on timer", "Done", "Your welcome!!", or offering technical help).
+  - Attribute each message to the correct sender based on their conversational context, ignoring any incorrect [CUSTOMER] or [AGENT] labels.
+  
 Calculate:
-1. slaMet: true if the human agent's first reply was within 60 seconds (or the configured SLA limit) of the customer's completed issue description, false otherwise.
+1. slaMet: true if the support agent's first human reply was within 60 seconds (or the configured SLA limit) of the customer's completed issue description, false otherwise.
 2. frtDuration: The exact duration of the first response (e.g., "45s", "1m 15s").
 3. avgResponseTime: The average response delay of the agent to subsequent customer messages (e.g., "1m 12s").
 4. deadAir: "Gap Detected (>3m)" if the agent kept the customer waiting in silence for > 3 minutes at any point; otherwise "None".

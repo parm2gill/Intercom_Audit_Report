@@ -149,21 +149,59 @@ function parseChatMessages(container) {
       const dataTestId = current.getAttribute('data-testid') || '';
       
       if (typeof classList === 'string') {
+        const lowerClass = classList.toLowerCase();
+        
+        // 1. Prioritize Admin/Agent Detection (Agent messages are right-aligned or contain admin/agent/you keywords)
         if (
-          classList.includes('customer') || 
-          dataTestId.includes('customer') || 
-          current.querySelector('.conversation-part__metadata--customer')
-        ) {
-          senderType = 'customer';
-        } else if (
-          classList.includes('admin') || 
-          classList.includes('agent') || 
+          lowerClass.includes('admin') || 
+          lowerClass.includes('agent') || 
+          lowerClass.includes('operator') ||
+          lowerClass.includes('you') ||
+          lowerClass.includes('right') ||
+          lowerClass.includes('end') ||
+          lowerClass.includes('creator-admin') ||
           dataTestId.includes('admin') || 
           dataTestId.includes('agent') || 
-          current.querySelector('.conversation-part__metadata--admin')
+          current.querySelector('.conversation-part__metadata--admin') !== null ||
+          current.querySelector('[class*="admin"]') !== null ||
+          current.querySelector('[class*="agent"]') !== null
         ) {
           senderType = 'agent';
+          break; // Confirmed agent, break early
+        } 
+        
+        // 2. Customer Detection (Left-aligned or contains customer/user keywords)
+        if (
+          lowerClass.includes('customer') || 
+          lowerClass.includes('user') || 
+          lowerClass.includes('proctor') ||
+          lowerClass.includes('left') ||
+          lowerClass.includes('start') ||
+          lowerClass.includes('creator-user') ||
+          dataTestId.includes('customer') || 
+          current.querySelector('.conversation-part__metadata--customer') !== null ||
+          current.querySelector('[class*="customer"]') !== null ||
+          current.querySelector('[class*="user"]') !== null
+        ) {
+          senderType = 'customer';
         }
+      }
+
+      // 3. Visual/Style layout alignment check (In Intercom, agent messages are aligned to the right/flex-end)
+      try {
+        const style = window.getComputedStyle(current);
+        if (
+          style.alignSelf === 'flex-end' || 
+          style.justifyContent === 'flex-end' || 
+          style.float === 'right' ||
+          style.textAlign === 'right' ||
+          parseInt(style.marginLeft, 10) > 100 // large left-margin pushes bubble to the right
+        ) {
+          senderType = 'agent';
+          break;
+        }
+      } catch (e) {
+        // ignore computation errors
       }
       
       const timeElement = current.querySelector('time, .conversation-part__time, .conversation-part__metadata');
@@ -174,7 +212,7 @@ function parseChatMessages(container) {
       current = current.parentElement;
     }
 
-    // Fallbacks for sender detection
+    // Fallbacks for sender detection if still unknown
     if (senderType === 'unknown') {
       const metadataText = block.querySelector('.conversation-part__metadata')?.innerText || '';
       if (metadataText.toLowerCase().includes('you') || metadataText.toLowerCase().includes('support')) {
@@ -182,7 +220,7 @@ function parseChatMessages(container) {
       } else if (metadataText.length > 0) {
         senderType = 'customer';
       } else {
-        // Default to customer (safest fallback for SLA calculation)
+        // Let's check block text for cues, else default to customer
         senderType = 'customer';
       }
     }

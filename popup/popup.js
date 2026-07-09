@@ -137,7 +137,26 @@ document.addEventListener('DOMContentLoaded', () => {
             ahtVal.textContent = '--';
           }
 
-          resultText.value = response.auditReport;
+          let metricsHeader = "TIMELINE ANALYTICS METRICS:\n";
+          if (metrics.status === 'Success') {
+            const slaText = metrics.slaMet ? 'MET' : 'FAILED';
+            const frtText = metrics.isAiEvaluated ? metrics.frtString : formatTime(metrics.responseTimeSeconds);
+            const artText = metrics.isAiEvaluated ? metrics.artString : formatTime(metrics.avgResponseTimeSeconds);
+            const deadAirText = metrics.isAiEvaluated ? metrics.deadAirString : (metrics.deadAirDetected ? 'Gap Detected' : 'None');
+            const ahtText = metrics.isAiEvaluated ? metrics.ahtString : formatTime(metrics.handlingTimeSeconds);
+
+            metricsHeader += `First Response SLA: ${slaText}\n`;
+            metricsHeader += `FRT Duration: ${frtText}\n`;
+            metricsHeader += `Average Response (ART): ${artText}\n`;
+            metricsHeader += `Dead Air (> 3m): ${deadAirText}\n`;
+            metricsHeader += `Total Handling Time (AHT): ${ahtText}\n`;
+          } else {
+            metricsHeader += `First Response SLA: N/A\n`;
+            metricsHeader += `FRT Duration: ${metrics.status}\n`;
+          }
+          metricsHeader += "==================================================\n\n";
+
+          resultText.value = metricsHeader + response.auditReport;
           copyBtn.disabled = false;
         } else {
           showError(response.error || 'An unexpected error occurred.');
